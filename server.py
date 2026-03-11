@@ -144,7 +144,8 @@ def calculate_form_from_events(events: list, team_id_str: str) -> dict:
     gf     = int(sum(m["gf"] for m in last5))
     ga     = int(sum(m["ga"] for m in last5))
 
-    recent_games = [
+    # Todos os jogos concluídos da época (para histórico completo)
+    all_games = [
         {
             "date":      m["date"][:10],
             "opponent":  m["opponent"],
@@ -153,12 +154,12 @@ def calculate_form_from_events(events: list, team_id_str: str) -> dict:
             "result":    "W" if m["gf"] > m["ga"] else ("D" if m["gf"] == m["ga"] else "L"),
             "home_away": m["home_away"],
         }
-        for m in last5
+        for m in completed  # todos, não só last5
     ]
 
     return {
         "wins": wins, "draws": draws, "losses": losses, "gf": gf, "ga": ga,
-        "recent_games": recent_games,
+        "recent_games": all_games,
     }
 
 

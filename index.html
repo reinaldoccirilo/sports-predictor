@@ -905,34 +905,79 @@ function formChipsWithScores(games) {
   return `<div class="form-chips" style="margin-top:8px">${chips}</div>`;
 }
 
+function makeGameRow(g) {
+  const resCls = g.result === "W" ? "chip-W" : g.result === "D" ? "chip-D" : "chip-L";
+  const resLbl = g.result === "W" ? "V" : g.result === "D" ? "E" : "D";
+  const haLbl  = g.home_away === "home"
+    ? `<span style="color:var(--cyan);font-weight:700">Casa</span>`
+    : `<span style="color:var(--muted)">Fora</span>`;
+  return `<tr>
+    <td class="trw-date">${g.date}</td>
+    <td class="trw-opp">${g.opponent || "—"}</td>
+    <td class="trw-ha">${haLbl}</td>
+    <td class="trw-score">${g.gf}–${g.ga}</td>
+    <td class="trw-res"><span class="chip ${resCls}" style="margin:0 auto">${resLbl}</span></td>
+  </tr>`;
+}
+
 function renderTeamRecentGames(side, games) {
   const el = n(`${side}_recent_games`);
   if (!games || games.length === 0) { el.innerHTML = ""; return; }
-  const rows = games.map(g => {
-    const resCls = g.result === "W" ? "chip-W" : g.result === "D" ? "chip-D" : "chip-L";
-    const resLbl = g.result === "W" ? "V" : g.result === "D" ? "E" : "D";
-    const haLbl  = g.home_away === "home"
-      ? `<span style="color:var(--cyan);font-weight:700">Casa</span>`
-      : `<span style="color:var(--muted)">Fora</span>`;
-    return `<tr>
-      <td class="trw-date">${g.date}</td>
-      <td class="trw-opp">${g.opponent || "—"}</td>
-      <td class="trw-ha">${haLbl}</td>
-      <td class="trw-score">${g.gf}–${g.ga}</td>
-      <td class="trw-res"><span class="chip ${resCls}" style="margin:0 auto">${resLbl}</span></td>
-    </tr>`;
-  }).join("");
+
+  const PREVIEW = 5;
+  const hasMore = games.length > PREVIEW;
+  const previewRows  = games.slice(0, PREVIEW).map(makeGameRow).join("");
+  const remainRows   = games.slice(PREVIEW).map(makeGameRow).join("");
+
+  // season summary stats
+  const totalG = games.length;
+  const wins   = games.filter(g => g.result === "W").length;
+  const draws  = games.filter(g => g.result === "D").length;
+  const losses = games.filter(g => g.result === "L").length;
+  const gf     = games.reduce((s, g) => s + g.gf, 0);
+  const ga     = games.reduce((s, g) => s + g.ga, 0);
+  const pts    = wins * 3 + draws;
+
+  const thead = `<thead><tr>
+    <th>Data</th><th>Adversário</th>
+    <th style="text-align:center">Local</th>
+    <th style="text-align:center">Resultado</th>
+    <th style="text-align:center">R</th>
+  </tr></thead>`;
+
+  const toggleId = `${side}_games_toggle`;
+  const extraId  = `${side}_games_extra`;
+
   el.innerHTML = `<div class="team-recent-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px 4px">
+      <span style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)">
+        Época: ${totalG} jogos · ${pts} pts · ${wins}V ${draws}E ${losses}D · ${gf}GM ${ga}GS
+      </span>
+      ${hasMore ? `<button id="${toggleId}" onclick="toggleSeasonGames('${side}')"
+        style="background:none;border:1px solid rgba(0,210,255,.2);color:var(--cyan);
+               font-size:.68rem;padding:3px 9px;border-radius:6px;cursor:pointer">
+        Ver época completa (${totalG})
+      </button>` : ""}
+    </div>
     <table>
-      <thead><tr>
-        <th>Data</th><th>Adversário</th>
-        <th style="text-align:center">Local</th>
-        <th style="text-align:center">Resultado</th>
-        <th style="text-align:center">R</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
+      ${thead}
+      <tbody>${previewRows}</tbody>
     </table>
+    ${hasMore ? `<div id="${extraId}" style="display:none">
+      <table style="width:100%;border-collapse:collapse">
+        ${thead}
+        <tbody>${remainRows}</tbody>
+      </table>
+    </div>` : ""}
   </div>`;
+}
+
+function toggleSeasonGames(side) {
+  const extra  = n(`${side}_games_extra`);
+  const btn    = n(`${side}_games_toggle`);
+  const shown  = extra.style.display !== "none";
+  extra.style.display = shown ? "none" : "block";
+  btn.textContent = shown ? `Ver época completa` : "Ocultar";
 }
 
 // ── sport toggle ──────────────────────────────────────────────────────────────
