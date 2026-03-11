@@ -164,6 +164,26 @@ def fetch_team_stats(team_id: str, league_id: str) -> dict:
 
     items = team_data.get("record", {}).get("items", [])
     if not items:
+        # Ligas UEFA não têm record por equipa — usar liga doméstica como fallback
+        dl_slug = (
+            team_data.get("defaultLeague", {}).get("midsizeName", "") or ""
+        ).lower()
+        if not dl_slug:
+            # Segunda tentativa: endpoint genérico de equipas de futebol
+            try:
+                generic = fetch_json_url(
+                    f"https://site.api.espn.com/apis/site/v2/sports/soccer/teams/{team_id}"
+                )
+                dl_slug = (
+                    generic.get("team", {})
+                           .get("defaultLeague", {})
+                           .get("midsizeName", "")
+                    or ""
+                ).lower()
+            except Exception:
+                pass
+        if dl_slug and dl_slug != league_id:
+            return fetch_team_stats(team_id, dl_slug)
         raise ValueError(f"Sem dados de record para equipa {team_id}")
     stats = items[0].get("stats", [])
 
