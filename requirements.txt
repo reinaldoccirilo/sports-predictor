@@ -1,0 +1,2 @@
+# Este programa usa apenas a biblioteca padrão do Python (stdlib).
+# Nenhuma dependência externa necessária.

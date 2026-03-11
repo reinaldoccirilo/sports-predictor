@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Predictor</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #020c1b;
+    --card:    rgba(10, 24, 48, 0.72);
+    --card2:   rgba(5, 14, 32, 0.85);
+    --border:  rgba(0, 210, 255, 0.11);
+    --text:    #cdd6f4;
+    --muted:   #4d6680;
+    --radius:  18px;
+
+    --cyan:    #00d2ff;
+    --purple:  #7c3aed;
+    --orange:  #ff6b35;
+
+    --green:   #00e676;
+    --yellow:  #ffd740;
+    --red:     #ff5252;
+    --blue:    #448aff;
+    --teal:    #1de9b6;
+    --sky:     #40c4ff;
+    --pink:    #e040fb;
+
+    --accent-football: var(--cyan);
+    --accent-nba:      var(--orange);
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(rgba(0,210,255,.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,210,255,.022) 1px, transparent 1px);
+    background-size: 55px 55px;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 16px 90px;
+    overflow-x: hidden;
+  }
+
+  /* ── animated bg orbs ── */
+  .bg-fx {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    overflow: hidden;
+  }
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: .5;
+  }
+  .orb1 {
+    width: 640px; height: 640px;
+    background: radial-gradient(circle, rgba(0,150,255,.3) 0%, transparent 70%);
+    top: -220px; left: -220px;
+    animation: flt1 20s ease-in-out infinite;
+  }
+  .orb2 {
+    width: 520px; height: 520px;
+    background: radial-gradient(circle, rgba(120,50,230,.25) 0%, transparent 70%);
+    bottom: -180px; right: -180px;
+    animation: flt2 24s ease-in-out infinite;
+  }
+  .orb3 {
+    width: 380px; height: 380px;
+    background: radial-gradient(circle, rgba(0,255,140,.12) 0%, transparent 70%);
+    top: 40%; left: 55%;
+    animation: flt3 30s ease-in-out infinite;
+  }
+  @keyframes flt1 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    40%     { transform: translate(100px,130px) scale(1.05); }
+    70%     { transform: translate(-50px,70px) scale(.95); }
+  }
+  @keyframes flt2 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    40%     { transform: translate(-110px,-90px) scale(1.05); }
+    70%     { transform: translate(60px,-130px) scale(.95); }
+  }
+  @keyframes flt3 {
+    0%,100% { transform: translate(-50%,-50%) scale(1); opacity:.5; }
+    50%     { transform: translate(-50%,-50%) scale(1.4); opacity:.25; }
+  }
+
+  .wrapper { max-width: 980px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* ── header ── */
+  header { text-align: center; margin-bottom: 32px; }
+
+  header h1 {
+    font-size: 2.3rem;
+    font-weight: 900;
+    letter-spacing: -1.2px;
+    color: rgba(210,225,255,.92);
+    text-shadow: 0 2px 30px rgba(0,0,0,.6);
+  }
+  #sport-accent {
+    transition: color .4s, filter .4s;
+    filter: drop-shadow(0 0 14px currentColor);
+  }
+  header p {
+    color: var(--muted);
+    margin-top: 7px;
+    font-size: .8rem;
+    letter-spacing: .6px;
+  }
+
+  /* ── sport toggle ── */
+  .sport-toggle { display: flex; gap: 10px; justify-content: center; margin-bottom: 26px; }
+
+  .sport-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 30px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--card2);
+    color: var(--muted);
+    font-size: .88rem; font-weight: 700;
+    cursor: pointer;
+    transition: all .25s;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    letter-spacing: .3px;
+  }
+  .sport-btn:hover:not(.active-football):not(.active-nba) {
+    border-color: rgba(255,255,255,.14);
+    color: rgba(200,215,235,.7);
+  }
+  .sport-btn.active-football {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(0,210,255,.07);
+    box-shadow: 0 0 22px rgba(0,210,255,.18), inset 0 0 18px rgba(0,210,255,.05);
+  }
+  .sport-btn.active-nba {
+    border-color: var(--orange);
+    color: var(--orange);
+    background: rgba(255,107,53,.07);
+    box-shadow: 0 0 22px rgba(255,107,53,.18), inset 0 0 18px rgba(255,107,53,.05);
+  }
+
+  /* ── cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    transition: border-color .25s, box-shadow .25s;
+  }
+  .card:hover { border-color: rgba(0,210,255,.18); }
+
+  .card-title {
+    font-size: .63rem; font-weight: 700;
+    letter-spacing: 2.2px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:620px) { .teams-grid { grid-template-columns: 1fr; } }
+
+  /* ── league card ── */
+  .league-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 22px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  .league-card label {
+    font-size: .63rem; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); white-space: nowrap;
+  }
+
+  /* ── team search ── */
+  .team-search-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .team-search-row .field { flex: 1; margin-bottom: 0; }
+
+  .btn-fetch {
+    background: linear-gradient(135deg, #1848b8, #2563eb);
+    color: #fff;
+    border: none; border-radius: 10px;
+    padding: 9px 13px;
+    font-size: .74rem; font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+    transition: all .2s;
+    display: flex; align-items: center; gap: 5px;
+    box-shadow: 0 4px 16px rgba(37,99,235,.28);
+    letter-spacing: .3px;
+  }
+  .btn-fetch:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(37,99,235,.4); }
+  .btn-fetch:disabled { opacity: .3; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-fetch.nba {
+    background: linear-gradient(135deg, #b83420, #ea580c);
+    box-shadow: 0 4px 16px rgba(234,88,12,.28);
+  }
+  .btn-fetch.nba:hover { box-shadow: 0 6px 22px rgba(234,88,12,.4); }
+
+  /* ── data badge ── */
+  .data-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,230,118,.05);
+    border: 1px solid rgba(0,230,118,.22);
+    color: var(--green);
+    border-radius: 99px;
+    padding: 4px 12px;
+    font-size: .68rem; font-weight: 600;
+    margin-top: 6px; letter-spacing: .3px;
+  }
+  .data-badge.loading {
+    background: rgba(68,138,255,.06);
+    border-color: rgba(68,138,255,.28);
+    color: #90caf9;
+  }
+  .data-badge.error {
+    background: rgba(255,82,82,.06);
+    border-color: rgba(255,82,82,.28);
+    color: #ff8a80;
+  }
+  .data-badge.nba {
+    background: rgba(255,107,53,.06);
+    border-color: rgba(255,107,53,.28);
+    color: var(--orange);
+  }
+
+  /* ── form fields ── */
+  .field { margin-bottom: 11px; }
+  label { display: block; font-size: .7rem; color: var(--muted); margin-bottom: 4px; letter-spacing: .3px; }
+
+  input[type=text], input[type=number], input[type=date], select {
+    width: 100%;
+    background: rgba(2, 10, 24, 0.65);
+    border: 1px solid rgba(0,210,255,.09);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 8px 11px;
+    font-size: .85rem;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus, select:focus {
+    border-color: rgba(0,210,255,.55);
+    box-shadow: 0 0 0 3px rgba(0,210,255,.08), 0 0 16px rgba(0,210,255,.06);
+  }
+  .nba-mode input:focus, .nba-mode select:focus {
+    border-color: rgba(255,107,53,.55);
+    box-shadow: 0 0 0 3px rgba(255,107,53,.08), 0 0 16px rgba(255,107,53,.06);
+  }
+  select option { background: #070f1e; color: var(--text); }
+
+  /* ── grids ── */
+  .row { display: grid; gap: 10px; }
+  .row-2 { grid-template-columns: repeat(2,1fr); }
+  .row-3 { grid-template-columns: repeat(3,1fr); }
+  .row-5 { grid-template-columns: repeat(5,1fr); }
+  @media(max-width:480px) { .row-3,.row-5 { grid-template-columns: repeat(2,1fr); } }
+
+  /* ── options ── */
+  .options-bar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  .options-bar .field { margin-bottom: 0; flex: 1; min-width: 150px; }
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .toggle-wrap input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--cyan); cursor: pointer; }
+  .toggle-wrap span { font-size: .82rem; color: var(--muted); }
+
+  /* ── submit button ── */
+  .btn-calc {
+    display: block; width: 100%;
+    background: linear-gradient(135deg, #00b4d8 0%, #0077b6 50%, #03045e 100%);
+    color: #fff;
+    font-size: .97rem; font-weight: 800;
+    border: none; border-radius: var(--radius);
+    padding: 15px;
+    cursor: pointer;
+    transition: all .22s;
+    margin-top: 4px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 28px rgba(0,180,216,.28);
+  }
+  /* shine sweep */
+  .btn-calc::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -80%;
+    width: 45%; height: 200%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);
+    transform: skewX(-18deg);
+    transition: left .55s ease;
+  }
+  .btn-calc:hover::before { left: 130%; }
+  .btn-calc:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 36px rgba(0,180,216,.38), 0 0 24px rgba(0,210,255,.15);
+  }
+  .btn-calc:active { transform: scale(.985); }
+  .btn-calc:disabled { opacity: .35; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-calc.nba {
+    background: linear-gradient(135deg, #ff6b35 0%, #d84315 50%, #6d1a00 100%);
+    box-shadow: 0 4px 28px rgba(255,107,53,.28);
+  }
+  .btn-calc.nba:hover {
+    box-shadow: 0 8px 36px rgba(255,107,53,.38), 0 0 24px rgba(255,107,53,.15);
+  }
+
+  /* ── results ── */
+  #results { display: none; }
+
+  .match-header { text-align: center; margin-bottom: 26px; }
+  .match-header .teams {
+    font-size: 1.5rem; font-weight: 900;
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    letter-spacing: -.4px;
+  }
+  .vs {
+    color: var(--muted);
+    font-size: .7rem; font-weight: 700;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 5px 14px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .model-badge {
+    display: inline-block; margin-top: 7px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 3px 11px;
+    font-size: .66rem; color: var(--muted);
+    letter-spacing: .5px;
+  }
+
+  /* ── bars ── */
+  .market { margin-bottom: 26px; }
+  .market-title {
+    font-size: .63rem; font-weight: 700;
+    letter-spacing: 2.2px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 13px;
+  }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-label { font-size: .77rem; color: var(--muted); width: 140px; flex-shrink: 0; text-align: right; }
+  .bar-track {
+    flex: 1; height: 34px;
+    background: rgba(255,255,255,.035);
+    border: 1px solid rgba(255,255,255,.04);
+    border-radius: 8px;
+    overflow: hidden; position: relative;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 8px;
+    transition: width .85s cubic-bezier(.4,0,.2,1);
+    position: relative;
+  }
+  /* sheen overlay */
+  .bar-fill::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255,255,255,.12) 40%,
+      rgba(255,255,255,.08) 60%,
+      transparent 100%);
+    border-radius: inherit;
+  }
+  .bar-pct {
+    position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: .84rem; font-weight: 800;
+    color: #fff;
+    text-shadow: 0 1px 5px rgba(0,0,0,.7);
+    letter-spacing: .3px;
+  }
+
+  .c-green  { background: linear-gradient(90deg,#00955e,#00e676); box-shadow: inset 0 0 0 1000px transparent, 0 0 12px rgba(0,230,118,.35); }
+  .c-yellow { background: linear-gradient(90deg,#d4900a,#ffd740); box-shadow: 0 0 12px rgba(255,215,64,.3); }
+  .c-red    { background: linear-gradient(90deg,#b01020,#ff5252); box-shadow: 0 0 12px rgba(255,82,82,.3); }
+  .c-blue   { background: linear-gradient(90deg,#0d47a1,#448aff); box-shadow: 0 0 12px rgba(68,138,255,.3); }
+  .c-purple { background: linear-gradient(90deg,#3a1080,#7c3aed); box-shadow: 0 0 12px rgba(124,58,237,.3); }
+  .c-teal   { background: linear-gradient(90deg,#00555a,#1de9b6); box-shadow: 0 0 12px rgba(29,233,182,.3); }
+  .c-orange { background: linear-gradient(90deg,#a03010,#ff6b35); box-shadow: 0 0 12px rgba(255,107,53,.3); }
+  .c-sky    { background: linear-gradient(90deg,#014d70,#40c4ff); box-shadow: 0 0 12px rgba(64,196,255,.3); }
+  .c-pink   { background: linear-gradient(90deg,#6a0040,#e040fb); box-shadow: 0 0 12px rgba(224,64,251,.3); }
+
+  /* ── quick stats ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 24px; }
+  .stat-item {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 13px 14px; text-align: center;
+    transition: border-color .2s;
+  }
+  .stat-item:hover { border-color: rgba(0,210,255,.22); }
+  .stat-item .val { font-size: 1.55rem; font-weight: 900; letter-spacing: -.5px; }
+  .stat-item .lbl { font-size: .63rem; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+
+  /* ── form chips ── */
+  .form-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+  .chip {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .71rem; font-weight: 800; letter-spacing: .3px;
+  }
+  .chip-W { background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.28); color: var(--green); }
+  .chip-D { background: rgba(255,215,64,.1); border: 1px solid rgba(255,215,64,.28); color: var(--yellow); }
+  .chip-L { background: rgba(255,82,82,.1);  border: 1px solid rgba(255,82,82,.28);  color: var(--red); }
+
+  /* ── OU table (NBA) ── */
+  .ou-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 8px; }
+  .ou-table th {
+    color: var(--muted); font-weight: 700;
+    font-size: .63rem; text-transform: uppercase; letter-spacing: 1.8px;
+    padding: 7px 12px; text-align: left;
+    border-bottom: 1px solid rgba(0,210,255,.1);
+  }
+  .ou-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(0,210,255,.05);
+    transition: background .15s;
+  }
+  .ou-table tr:hover td { background: rgba(0,210,255,.04); }
+  .ou-table tr:last-child td { border-bottom: none; }
+  .ou-highlight { color: var(--orange) !important; font-weight: 800; }
+
+  /* ── debug ── */
+  #debug-block { display: none; }
+  pre.debug-pre {
+    background: rgba(2,10,24,.85);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: .72rem; color: var(--muted);
+    overflow-x: auto; line-height: 1.7;
+    margin-top: 8px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+  }
+
+  /* ── error ── */
+  .error-msg {
+    background: rgba(255,82,82,.07);
+    border: 1px solid rgba(255,82,82,.28);
+    color: #ff8a80;
+    border-radius: 10px;
+    padding: 11px 16px;
+    font-size: .82rem;
+    display: none; margin-top: 10px;
+  }
+
+  /* ── spinner ── */
+  .spinner {
+    display: inline-block;
+    width: 15px; height: 15px;
+    border: 2.5px solid rgba(255,255,255,.15);
+    border-top-color: rgba(255,255,255,.9);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    vertical-align: middle;
+  }
+  .spinner-sm { width: 11px; height: 11px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .sep {
+    border: none;
+    border-top: 1px solid rgba(0,210,255,.07);
+    margin: 10px 0 14px;
+  }
+
+  /* ── NBA pts box ── */
+  .pts-box { display: flex; gap: 14px; margin-bottom: 22px; }
+  .pts-team {
+    flex: 1;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px; text-align: center;
+    transition: border-color .2s;
+  }
+  .pts-team:hover { border-color: rgba(255,107,53,.3); }
+  .pts-team .pts-val { font-size: 2.3rem; font-weight: 900; letter-spacing: -1px; }
+  .pts-team .pts-lbl { font-size: .67rem; color: var(--muted); margin-top: 4px; }
+  .pts-vs { display: flex; align-items: center; color: var(--muted); font-size: .78rem; padding: 0 4px; }
+
+  /* ── custom scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,210,255,.18); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,210,255,.36); }
+
+  /* ── recent games table ── */
+  .recent-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px; flex-wrap: wrap; gap: 8px;
+  }
+  .recent-table {
+    width: 100%; border-collapse: collapse; font-size: .82rem;
+  }
+  .recent-table th {
+    color: var(--muted); font-weight: 700;
+    font-size: .63rem; text-transform: uppercase; letter-spacing: 1.8px;
+    padding: 7px 10px; text-align: left;
+    border-bottom: 1px solid rgba(0,210,255,.1);
+  }
+  .recent-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid rgba(0,210,255,.05);
+    vertical-align: middle;
+  }
+  .recent-table tr:hover td { background: rgba(0,210,255,.03); }
+  .recent-table tr:last-child td { border-bottom: none; }
+  .r-date   { color: var(--muted); font-size: .74rem; white-space: nowrap; }
+  .r-team   { font-weight: 600; }
+  .r-winner { color: var(--green) !important; font-weight: 800; }
+  .r-score  { text-align: center; white-space: nowrap; font-size: .88rem; }
+  .r-pred   { text-align: center; white-space: nowrap; }
+  .r-status { font-size: .65rem; color: rgba(0,210,255,.45); display: block; margin-top: 1px; }
+  .live-dot {
+    color: var(--red); font-weight: 800; font-size: .78rem;
+    animation: blink 1.1s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+  .pred-ok  { color: var(--green); font-size: .78rem; font-weight: 700; }
+  .pred-err { color: var(--red);   font-size: .78rem; font-weight: 700; }
+  .pred-pen { color: var(--orange);font-size: .78rem; font-weight: 700; }
+  .pred-sub { font-size: .67rem; font-weight: 400; color: var(--muted); display: block; }
+</style>
+</head>
+<body>
+
+<!-- animated background -->
+<div class="bg-fx" aria-hidden="true">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+
+<div class="wrapper">
+
+  <!-- ── Header ── -->
+  <header>
+    <h1 id="page-title">⚡ Sports <span id="sport-accent" style="color:var(--cyan)">Predictor</span></h1>
+    <p id="page-sub">Dados reais via ESPN · Probabilidades puras · Sem conselhos de aposta</p>
+  </header>
+
+  <!-- ── Sport Toggle ── -->
+  <div class="sport-toggle">
+    <button class="sport-btn active-football" id="btn-sport-football" onclick="setSport('football')">
+      ⚽ Futebol
+    </button>
+    <button class="sport-btn" id="btn-sport-nba" onclick="setSport('nba')">
+      🏀 NBA
+    </button>
+  </div>
+
+  <!-- ── Liga / League selector ── -->
+  <div class="league-card" id="league-card">
+    <label id="league-label">🌍 Liga</label>
+    <select id="league" style="max-width:260px;margin:0;background:rgba(2,10,24,.7)"></select>
+    <span id="league-hint" style="font-size:.75rem;color:var(--muted)">Selecione a liga para carregar as equipas</span>
+  </div>
+
+  <form id="form" novalidate>
+    <div class="teams-grid">
+
+      <!-- ── CASA ── -->
+      <div class="card">
+        <div class="card-title" id="lbl-home-title">🏠 Equipa da Casa</div>
+        <div class="team-search-row">
+          <div class="field">
+            <label>Equipa</label>
+            <select id="home_team_sel"><option value="">— selecione a liga —</option></select>
+          </div>
+          <button type="button" class="btn-fetch" id="btn_fetch_home" disabled onclick="fetchTeamData('home')">
+            🔄 Dados reais
+          </button>
+        </div>
+        <div id="home_badge"></div>
+        <hr class="sep">
+
+        <div class="card-title" style="margin-bottom:8px" id="lbl-form-home">Forma — últimos 5 jogos</div>
+        <div class="row row-5">
+          <div class="field"><label>Vit.</label><input type="number" id="home_w"  value="2" min="0" max="5"></div>
+          <div class="field"><label>Emp.</label><input type="number" id="home_d"  value="1" min="0" max="5"></div>
+          <div class="field"><label>Der.</label><input type="number" id="home_l"  value="2" min="0" max="5"></div>
+          <div class="field"><label id="lbl-home-gf">Golos M</label><input type="number" id="home_gf" value="6" min="0"></div>
+          <div class="field"><label id="lbl-home-ga">Golos S</label><input type="number" id="home_ga" value="6" min="0"></div>
+        </div>
+        <hr class="sep">
+        <div class="row row-2">
+          <div class="field"><label id="lbl-home-avg-s">Média golos marcados</label><input type="number" id="home_avg_s" value="1.35" step="0.01" min="0"></div>
+          <div class="field"><label id="lbl-home-avg-c">Média golos sofridos</label><input type="number" id="home_avg_c" value="1.35" step="0.01" min="0"></div>
+        </div>
+        <div class="row row-2">
+          <div class="field"><label>Win rate casa (0–1)</label><input type="number" id="home_wr"  value="0.50" step="0.01" min="0" max="1"></div>
+          <div class="field"><label>Lesões/suspensões</label><input type="number" id="home_inj" value="0" min="0" max="11"></div>
+        </div>
+      </div>
+
+      <!-- ── FORA ── -->
+      <div class="card">
+        <div class="card-title" id="lbl-away-title">✈️ Equipa de Fora</div>
+        <div class="team-search-row">
+          <div class="field">
+            <label>Equipa</label>
+            <select id="away_team_sel"><option value="">— selecione a liga —</option></select>
+          </div>
+          <button type="button" class="btn-fetch" id="btn_fetch_away" disabled onclick="fetchTeamData('away')">
+            🔄 Dados reais
+          </button>
+        </div>
+        <div id="away_badge"></div>
+        <hr class="sep">
+
+        <div class="card-title" style="margin-bottom:8px" id="lbl-form-away">Forma — últimos 5 jogos</div>
+        <div class="row row-5">
+          <div class="field"><label>Vit.</label><input type="number" id="away_w"  value="2" min="0" max="5"></div>
+          <div class="field"><label>Emp.</label><input type="number" id="away_d"  value="1" min="0" max="5"></div>
+          <div class="field"><label>Der.</label><input type="number" id="away_l"  value="2" min="0" max="5"></div>
+          <div class="field"><label id="lbl-away-gf">Golos M</label><input type="number" id="away_gf" value="6" min="0"></div>
+          <div class="field"><label id="lbl-away-ga">Golos S</label><input type="number" id="away_ga" value="6" min="0"></div>
+        </div>
+        <hr class="sep">
+        <div class="row row-2">
+          <div class="field"><label id="lbl-away-avg-s">Média golos marcados</label><input type="number" id="away_avg_s" value="1.35" step="0.01" min="0"></div>
+          <div class="field"><label id="lbl-away-avg-c">Média golos sofridos</label><input type="number" id="away_avg_c" value="1.35" step="0.01" min="0"></div>
+        </div>
+        <div class="row row-2">
+          <div class="field"><label>Win rate fora (0–1)</label><input type="number" id="away_wr"  value="0.35" step="0.01" min="0" max="1"></div>
+          <div class="field"><label>Lesões/suspensões</label><input type="number" id="away_inj" value="0" min="0" max="11"></div>
+        </div>
+      </div>
+
+    </div><!-- /teams-grid -->
+
+    <!-- ── H2H + extras ── -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="card-title" style="margin-bottom:0" id="lbl-h2h-title">Confronto Direto (H2H) &amp; Extras</div>
+        <button type="button" id="btn_fetch_h2h" class="btn-fetch" disabled onclick="fetchH2H()" style="font-size:.73rem;padding:7px 11px">
+          🔄 H2H automático
+        </button>
+      </div>
+      <div id="h2h_badge" style="margin-bottom:10px"></div>
+      <div class="row row-3">
+        <div class="field"><label id="lbl-h2h-hw">H2H — Vitórias Casa</label><input type="number" id="h2h_hw" value="0" min="0"></div>
+        <div class="field"><label id="lbl-h2h-d">H2H — Empates</label><input type="number" id="h2h_d"  value="0" min="0"></div>
+        <div class="field"><label id="lbl-h2h-aw">H2H — Vitórias Fora</label><input type="number" id="h2h_aw" value="0" min="0"></div>
+      </div>
+      <div class="row row-2" style="margin-top:10px">
+        <div class="field"><label id="lbl-ha">Fator casa (ex: 1.10)</label><input type="number" id="ha" value="1.10" step="0.01" min="0.9" max="1.5"></div>
+        <div class="field"><label>Data do jogo (opcional)</label><input type="date" id="date"></div>
+      </div>
+    </div>
+
+    <!-- ── Options ── -->
+    <div class="card" id="options-card">
+      <div class="options-bar">
+        <div class="field" id="model-field">
+          <label>Motor</label>
+          <select id="model">
+            <option value="poisson"   selected>Poisson (recomendado)</option>
+            <option value="heuristic">Heurístico</option>
+          </select>
+        </div>
+        <label class="toggle-wrap" id="optional-toggle">
+          <input type="checkbox" id="opt_optional" checked>
+          <span>Over/Under 2.5 e BTTS</span>
+        </label>
+        <label class="toggle-wrap">
+          <input type="checkbox" id="opt_debug">
+          <span>Mostrar debug</span>
+        </label>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-calc" id="btn">⚡ Calcular Probabilidades</button>
+    <div class="error-msg" id="error"></div>
+  </form>
+
+  <!-- ── Results ── -->
+  <div id="results">
+    <div class="card" style="margin-top:20px">
+
+      <div class="match-header">
+        <div class="teams">
+          <span id="r_home">—</span>
+          <span class="vs">vs</span>
+          <span id="r_away">—</span>
+        </div>
+        <div style="margin-top:6px">
+          <span class="model-badge" id="r_model">—</span>
+          <span class="model-badge" id="r_date"   style="display:none">—</span>
+          <span class="model-badge" id="r_source" style="display:none">—</span>
+        </div>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="stats-grid" id="quick_stats" style="display:none"></div>
+
+      <!-- NBA: pontos esperados -->
+      <div id="nba_pts_box" style="display:none" class="pts-box">
+        <div class="pts-team">
+          <div class="pts-val" id="nba_pts_home" style="color:var(--orange)">—</div>
+          <div class="pts-lbl" id="nba_pts_home_lbl">Casa — Pontos esperados</div>
+        </div>
+        <div class="pts-vs">vs</div>
+        <div class="pts-team">
+          <div class="pts-val" id="nba_pts_away" style="color:var(--sky)">—</div>
+          <div class="pts-lbl" id="nba_pts_away_lbl">Fora — Pontos esperados</div>
+        </div>
+      </div>
+
+      <!-- 1X2 / Moneyline -->
+      <div class="market" id="mkt_1x2">
+        <div class="market-title" id="mkt_1x2_title">1X2 — Resultado Final</div>
+        <div id="bars_1x2"></div>
+      </div>
+
+      <!-- Over/Under futebol -->
+      <div class="market" id="mkt_ou" style="display:none">
+        <div class="market-title">Over / Under 2.5 Golos</div>
+        <div id="bars_ou"></div>
+      </div>
+
+      <!-- BTTS -->
+      <div class="market" id="mkt_btts" style="display:none">
+        <div class="market-title">Ambas Marcam (BTTS)</div>
+        <div id="bars_btts"></div>
+      </div>
+
+      <!-- Over/Under NBA (tabela com múltiplas linhas) -->
+      <div class="market" id="mkt_nba_ou" style="display:none">
+        <div class="market-title">Over / Under — Pontos Totais</div>
+        <table class="ou-table">
+          <thead>
+            <tr>
+              <th>Linha</th>
+              <th>Over %</th>
+              <th>Under %</th>
+              <th>Favorito</th>
+            </tr>
+          </thead>
+          <tbody id="nba_ou_rows"></tbody>
+        </table>
+      </div>
+
+      <!-- Debug -->
+      <div id="debug-block">
+        <hr class="sep" style="margin-top:16px">
+        <div class="market-title">Debug — Valores Intermédios</div>
+        <pre class="debug-pre" id="debug-pre"></pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Últimos Resultados NBA ── -->
+  <div id="nba-recent" style="display:none;margin-top:20px">
+    <div class="card">
+      <div class="recent-header">
+        <div class="card-title" style="margin-bottom:0">🏀 Últimos Resultados NBA</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="recent-updated" style="font-size:.7rem;color:var(--muted)"></span>
+          <button type="button" onclick="loadRecentNBAGames()" style="background:rgba(0,210,255,.08);border:1px solid rgba(0,210,255,.2);color:var(--cyan);border-radius:8px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;">🔄 Atualizar</button>
+        </div>
+      </div>
+      <div id="recent-games-body">
+        <div style="text-align:center;color:var(--muted);padding:24px">A carregar resultados...</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+// ── state ────────────────────────────────────────────────────────────────────
+let sport    = "football";
+const state  = { home: null, away: null };
+let teamsCache = {};
+let leagueId   = "por.1";
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+const n = id => document.getElementById(id);
+const isNBA = () => sport === "nba";
+
+async function apiFetch(path) {
+  const r = await fetch(path);
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
+}
+
+function setBadge(id, text, type = "ok") {
+  const cls = type === "ok" ? (isNBA() ? "nba" : "") : type;
+  n(id).innerHTML = `<span class="data-badge ${cls}">
+    ${type === "loading" ? '<span class="spinner spinner-sm"></span>' : type === "error" ? "⚠️" : "✅"}
+    ${text}
+  </span>`;
+}
+function clearBadge(id) { n(id).innerHTML = ""; }
+
+function makeBar(label, pct, colorClass) {
+  const w = Math.min(100, Math.max(0, pct));
+  return `<div class="bar-row">
+    <span class="bar-label">${label}</span>
+    <div class="bar-track">
+      <div class="bar-fill ${colorClass}" style="width:0%" data-target="${w}%"></div>
+      <span class="bar-pct">${pct.toFixed(1)}%</span>
+    </div>
+  </div>`;
+}
+
+function animateBars() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".bar-fill[data-target]").forEach(el => {
+      el.style.transition = "none"; el.style.width = "0%";
+      requestAnimationFrame(() => {
+        el.style.transition = "width .85s cubic-bezier(.4,0,.2,1)";
+        el.style.width = el.dataset.target;
+      });
+    });
+  });
+}
+
+function formChips(w, d, l) {
+  return `<div class="form-chips">
+    ${Array(w).fill('<span class="chip chip-W">V</span>').join("")}
+    ${Array(d).fill('<span class="chip chip-D">E</span>').join("")}
+    ${Array(l).fill('<span class="chip chip-L">D</span>').join("")}
+  </div>`;
+}
+
+// ── sport toggle ──────────────────────────────────────────────────────────────
+function setSport(s) {
+  sport = s;
+  const isNba = s === "nba";
+
+  // toggle buttons
+  n("btn-sport-football").className = "sport-btn" + (!isNba ? " active-football" : "");
+  n("btn-sport-nba").className      = "sport-btn" + (isNba  ? " active-nba"      : "");
+
+  // accent colour on title
+  n("sport-accent").style.color = isNba ? "var(--orange)" : "var(--cyan)";
+
+  // fetch buttons colour
+  ["btn_fetch_home", "btn_fetch_away", "btn_fetch_h2h"].forEach(id => {
+    n(id).classList.toggle("nba", isNba);
+  });
+
+  // calc button colour
+  n("btn").className = "btn-calc" + (isNba ? " nba" : "");
+
+  // labels
+  n("lbl-home-gf").textContent = isNba ? "Pts M" : "Golos M";
+  n("lbl-home-ga").textContent = isNba ? "Pts S" : "Golos S";
+  n("lbl-away-gf").textContent = isNba ? "Pts M" : "Golos M";
+  n("lbl-away-ga").textContent = isNba ? "Pts S" : "Golos S";
+  n("lbl-home-avg-s").textContent = isNba ? "Média pontos marcados" : "Média golos marcados";
+  n("lbl-home-avg-c").textContent = isNba ? "Média pontos sofridos" : "Média golos sofridos";
+  n("lbl-away-avg-s").textContent = isNba ? "Média pontos marcados" : "Média golos marcados";
+  n("lbl-away-avg-c").textContent = isNba ? "Média pontos sofridos" : "Média golos sofridos";
+  n("lbl-ha").textContent         = isNba ? "Vantagem casa (pts, ex: 3.5)" : "Fator casa (ex: 1.10)";
+  n("lbl-h2h-d").textContent      = isNba ? "H2H — Prorrogação" : "H2H — Empates";
+
+  // home advantage default
+  n("ha").value = isNba ? "3.0" : "1.10";
+  n("ha").step  = isNba ? "0.5" : "0.01";
+  n("ha").min   = isNba ? "0"   : "0.9";
+  n("ha").max   = isNba ? "10"  : "1.5";
+
+  // model field and optional toggle
+  n("model-field").style.display    = isNba ? "none" : "";
+  n("optional-toggle").style.display= isNba ? "none" : "";
+
+  // avg scored/conceded step and range
+  const step = isNba ? "0.1" : "0.01";
+  const maxV = isNba ? "160" : "10";
+  ["home_avg_s","home_avg_c","away_avg_s","away_avg_c"].forEach(id => {
+    n(id).step = step; n(id).max = maxV;
+  });
+
+  // default values when switching
+  if (isNba) {
+    ["home_avg_s","away_avg_s"].forEach(id => { if (parseFloat(n(id).value) < 50) n(id).value = "115.0"; });
+    ["home_avg_c","away_avg_c"].forEach(id => { if (parseFloat(n(id).value) < 50) n(id).value = "115.0"; });
+    ["home_gf","away_gf","home_ga","away_ga"].forEach(id => { if (parseInt(n(id).value) < 50) n(id).value = "575"; });
+  } else {
+    ["home_avg_s","away_avg_s"].forEach(id => { if (parseFloat(n(id).value) > 10) n(id).value = "1.35"; });
+    ["home_avg_c","away_avg_c"].forEach(id => { if (parseFloat(n(id).value) > 10) n(id).value = "1.35"; });
+    ["home_gf","away_gf","home_ga","away_ga"].forEach(id => { if (parseInt(n(id).value) > 50) n(id).value = "6"; });
+  }
+
+  // reset teams and reload league
+  state.home = null; state.away = null;
+  clearBadge("home_badge"); clearBadge("away_badge"); clearBadge("h2h_badge");
+  n("results").style.display = "none";
+
+  if (isNba) {
+    loadNBATeams();
+    n("league-card").style.display = "none";
+    n("nba-recent").style.display  = "block";
+    loadRecentNBAGames();
+  } else {
+    n("league-card").style.display = "";
+    n("nba-recent").style.display  = "none";
+    loadLeagues();
+  }
+}
+
+// ── football leagues ──────────────────────────────────────────────────────────
+async function loadLeagues() {
+  const data = await apiFetch("/api/leagues");
+  const sel  = n("league");
+  sel.innerHTML = data.map(l => `<option value="${l.id}">${l.name}</option>`).join("");
+  sel.onchange = () => { leagueId = sel.value; loadFootballTeams(leagueId); };
+  leagueId = data[0].id;
+  loadFootballTeams(leagueId);
+}
+
+async function loadFootballTeams(league) {
+  ["home_team_sel","away_team_sel"].forEach(id => {
+    n(id).innerHTML = "<option value=''>A carregar…</option>";
+  });
+  n("btn_fetch_home").disabled = n("btn_fetch_away").disabled = n("btn_fetch_h2h").disabled = true;
+  try {
+    const teams = await apiFetch(`/api/teams?league=${encodeURIComponent(league)}`);
+    teamsCache[league] = teams;
+    const opts = `<option value="">— escolha uma equipa —</option>` +
+      teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+    n("home_team_sel").innerHTML = n("away_team_sel").innerHTML = opts;
+    n("btn_fetch_home").disabled = n("btn_fetch_away").disabled = false;
+  } catch(e) {
+    ["home_team_sel","away_team_sel"].forEach(id => {
+      n(id).innerHTML = `<option>Erro: ${e.message}</option>`;
+    });
+  }
+}
+
+// ── NBA teams ─────────────────────────────────────────────────────────────────
+async function loadNBATeams() {
+  ["home_team_sel","away_team_sel"].forEach(id => {
+    n(id).innerHTML = "<option value=''>A carregar NBA…</option>";
+  });
+  n("btn_fetch_home").disabled = n("btn_fetch_away").disabled = true;
+  try {
+    const teams = await apiFetch("/api/nba/teams");
+    const opts  = `<option value="">— escolha uma equipa —</option>` +
+      teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+    n("home_team_sel").innerHTML = n("away_team_sel").innerHTML = opts;
+    n("btn_fetch_home").disabled = n("btn_fetch_away").disabled = false;
+  } catch(e) {
+    ["home_team_sel","away_team_sel"].forEach(id => {
+      n(id).innerHTML = `<option>Erro: ${e.message}</option>`;
+    });
+  }
+}
+
+// ── fetch team data ───────────────────────────────────────────────────────────
+async function fetchTeamData(side) {
+  const sel    = n(`${side}_team_sel`);
+  const teamId = sel.value;
+  const name   = sel.options[sel.selectedIndex]?.text || "";
+  if (!teamId) { alert("Escolha primeiro uma equipa."); return; }
+
+  const btn = n(`btn_fetch_${side}`);
+  btn.disabled = true;
+  setBadge(`${side}_badge`, `A carregar ${name}…`, "loading");
+
+  try {
+    const url = isNBA()
+      ? `/api/nba/stats?team_id=${teamId}`
+      : `/api/stats?team_id=${teamId}&league=${encodeURIComponent(leagueId)}`;
+    const d = await apiFetch(url);
+
+    // fill fields
+    n(`${side}_w`).value     = d.form.wins;
+    n(`${side}_d`).value     = d.form.draws;
+    n(`${side}_l`).value     = d.form.losses;
+    n(`${side}_gf`).value    = d.form.gf;
+    n(`${side}_ga`).value    = d.form.ga;
+    n(`${side}_avg_s`).value = d.avg_scored;
+    n(`${side}_avg_c`).value = d.avg_conceded;
+    n(`${side}_wr`).value    = d[side === "home" ? "home_win_rate" : "away_win_rate"].toFixed(2);
+
+    state[side] = { id: teamId, name: d.name };
+
+    const sport_label = isNBA()
+      ? `${d.name} · ${d._games_played} jogos · ${d._total_wins}V ${d._total_losses}D`
+      : `${d.name} · ${d._games_played} jogos · ${d._goals_for} golos marcados · ${d._goals_against} sofridos`;
+
+    setBadge(`${side}_badge`, sport_label);
+    n(`${side}_badge`).insertAdjacentHTML("beforeend", formChips(d.form.wins, d.form.draws, d.form.losses));
+
+    if (state.home && state.away) n("btn_fetch_h2h").disabled = false;
+  } catch(e) {
+    setBadge(`${side}_badge`, `Erro: ${e.message}`, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── fetch H2H ─────────────────────────────────────────────────────────────────
+async function fetchH2H() {
+  if (!state.home || !state.away) { alert("Carregue primeiro dados das duas equipas."); return; }
+  const btn = n("btn_fetch_h2h");
+  btn.disabled = true;
+  setBadge("h2h_badge", "A pesquisar confrontos diretos…", "loading");
+  try {
+    const url = isNBA()
+      ? `/api/nba/h2h?home_id=${state.home.id}&away_id=${state.away.id}`
+      : `/api/h2h?home_id=${state.home.id}&away_id=${state.away.id}&league=${encodeURIComponent(leagueId)}`;
+    const d = await apiFetch(url);
+    n("h2h_hw").value = d.home_wins;
+    n("h2h_d").value  = d.draws;
+    n("h2h_aw").value = d.away_wins;
+
+    const total = d.home_wins + d.away_wins + d.draws;
+    const hist = d.matches.slice(0,5).map(m => {
+      const s1 = isNBA() ? m.home_pts : m.home_goals;
+      const s2 = isNBA() ? m.away_pts : m.away_goals;
+      return `<span style="color:var(--muted);font-size:.73rem">${m.date}: ${s1}–${s2}</span>`;
+    }).join("  ");
+
+    setBadge("h2h_badge",
+      total > 0
+        ? `${total} confronto(s) · ${state.home.name} ${d.home_wins}V ${d.draws}E ${d.away_wins}D ${state.away.name}`
+        : "Nenhum confronto encontrado esta época"
+    );
+    if (hist) n("h2h_badge").insertAdjacentHTML("beforeend",
+      `<div style="margin-top:5px;display:flex;gap:9px;flex-wrap:wrap">${hist}</div>`);
+  } catch(e) {
+    setBadge("h2h_badge", `Erro: ${e.message}`, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── build payload ─────────────────────────────────────────────────────────────
+function buildPayload() {
+  const homeSel  = n("home_team_sel");
+  const awaySel  = n("away_team_sel");
+  const homeName = homeSel.value ? (homeSel.options[homeSel.selectedIndex]?.text || "Casa") : "Casa";
+  const awayName = awaySel.value ? (awaySel.options[awaySel.selectedIndex]?.text || "Fora") : "Fora";
+  const h2h_hw   = parseInt(n("h2h_hw").value)||0;
+  const h2h_aw   = parseInt(n("h2h_aw").value)||0;
+  const h2h_d    = parseInt(n("h2h_d").value) ||0;
+
+  const base = {
+    _debug: n("opt_debug").checked,
+    date:   n("date").value || null,
+    h2h:    (h2h_hw+h2h_aw+h2h_d > 0) ? {home_wins:h2h_hw,away_wins:h2h_aw,draws:h2h_d} : null,
+    home: {
+      name: homeName,
+      form: { wins:parseInt(n("home_w").value)||0, draws:parseInt(n("home_d").value)||0,
+              losses:parseInt(n("home_l").value)||0, gf:parseInt(n("home_gf").value)||0, ga:parseInt(n("home_ga").value)||0 },
+      avg_scored:   parseFloat(n("home_avg_s").value)||1.35,
+      avg_conceded: parseFloat(n("home_avg_c").value)||1.35,
+      injuries:     parseInt(n("home_inj").value)||0,
+    },
+    away: {
+      name: awayName,
+      form: { wins:parseInt(n("away_w").value)||0, draws:parseInt(n("away_d").value)||0,
+              losses:parseInt(n("away_l").value)||0, gf:parseInt(n("away_gf").value)||0, ga:parseInt(n("away_ga").value)||0 },
+      avg_scored:   parseFloat(n("away_avg_s").value)||1.35,
+      avg_conceded: parseFloat(n("away_avg_c").value)||1.35,
+      injuries:     parseInt(n("away_inj").value)||0,
+    },
+  };
+
+  if (isNBA()) {
+    base.home_advantage_pts = parseFloat(n("ha").value)||3.0;
+    base.home.home_win_rate = parseFloat(n("home_wr").value)||0.60;
+    base.away.away_win_rate = parseFloat(n("away_wr").value)||0.40;
+  } else {
+    base._model    = n("model").value;
+    base._optional = n("opt_optional").checked;
+    base.home_advantage       = parseFloat(n("ha").value)||1.10;
+    base.home.home_win_rate   = parseFloat(n("home_wr").value)||0.50;
+    base.away.away_win_rate   = parseFloat(n("away_wr").value)||0.35;
+  }
+  return base;
+}
+
+// ── render results (football) ─────────────────────────────────────────────────
+function renderFootball(data) {
+  const p = data.probabilities;
+  const homeName = data.match.home, awayName = data.match.away;
+
+  n("r_home").textContent = homeName; n("r_away").textContent = awayName;
+  n("r_model").textContent = "Motor: " + data.model_used;
+  if (data.match.date) { n("r_date").textContent = data.match.date; n("r_date").style.display="inline-block"; }
+  if (state.home || state.away) { n("r_source").textContent="Dados: ESPN API"; n("r_source").style.display="inline-block"; }
+
+  n("nba_pts_box").style.display = "none";
+  n("mkt_nba_ou").style.display  = "none";
+
+  const hg = parseFloat(n("home_avg_s").value), ag = parseFloat(n("away_avg_s").value);
+  n("quick_stats").innerHTML = `
+    <div class="stat-item"><div class="val" style="color:var(--green)">${hg.toFixed(2)}</div><div class="lbl">${homeName}<br>Méd. Golos</div></div>
+    <div class="stat-item"><div class="val" style="color:var(--yellow)">${((hg+ag)/2).toFixed(2)}</div><div class="lbl">Méd. Total<br>por Jogo</div></div>
+    <div class="stat-item"><div class="val" style="color:var(--red)">${ag.toFixed(2)}</div><div class="lbl">${awayName}<br>Méd. Golos</div></div>`;
+  n("quick_stats").style.display = "grid";
+
+  n("mkt_1x2_title").textContent = "1X2 — Resultado Final";
+  n("bars_1x2").innerHTML =
+    makeBar("Vitória "+homeName, p.home_win_pct, "c-green") +
+    makeBar("Empate",            p.draw_pct,     "c-yellow")+
+    makeBar("Vitória "+awayName, p.away_win_pct, "c-red");
+
+  if (p.over_2_5_pct !== undefined) {
+    n("bars_ou").innerHTML  = makeBar("Over 2.5", p.over_2_5_pct, "c-blue")+makeBar("Under 2.5",p.under_2_5_pct,"c-purple");
+    n("bars_btts").innerHTML= makeBar("Ambas Marcam ✓",p.btts_yes_pct,"c-teal")+makeBar("Ambas Marcam ✗",p.btts_no_pct,"c-orange");
+    n("mkt_ou").style.display = n("mkt_btts").style.display = "block";
+  } else {
+    n("mkt_ou").style.display = n("mkt_btts").style.display = "none";
+  }
+
+  if (data.debug) { n("debug-pre").textContent = JSON.stringify(data.debug,null,2); n("debug-block").style.display="block"; }
+  else { n("debug-block").style.display="none"; }
+}
+
+// ── render results (NBA) ──────────────────────────────────────────────────────
+function renderNBA(data) {
+  const p = data.probabilities;
+  const homeName = data.match.home, awayName = data.match.away;
+
+  n("r_home").textContent = homeName; n("r_away").textContent = awayName;
+  n("r_model").textContent = "Motor: nba_normal";
+  if (data.match.date) { n("r_date").textContent = data.match.date; n("r_date").style.display="inline-block"; }
+  if (state.home || state.away) { n("r_source").textContent="Dados: ESPN API"; n("r_source").style.display="inline-block"; }
+
+  // Quick stats
+  n("quick_stats").innerHTML = `
+    <div class="stat-item"><div class="val" style="color:var(--orange)">${p.pts_expected_home}</div><div class="lbl">${homeName}<br>Pts esperados</div></div>
+    <div class="stat-item"><div class="val" style="color:var(--yellow)">${p.total_expected}</div><div class="lbl">Total esperado</div></div>
+    <div class="stat-item"><div class="val" style="color:var(--sky)">${p.pts_expected_away}</div><div class="lbl">${awayName}<br>Pts esperados</div></div>`;
+  n("quick_stats").style.display = "grid";
+
+  // Pts box
+  n("nba_pts_home").textContent     = p.pts_expected_home;
+  n("nba_pts_home_lbl").textContent = homeName + " — Pontos esperados";
+  n("nba_pts_away").textContent     = p.pts_expected_away;
+  n("nba_pts_away_lbl").textContent = awayName + " — Pontos esperados";
+  n("nba_pts_box").style.display    = "flex";
+
+  // Save prediction to localStorage for accuracy tracking
+  if (state.home && state.away) {
+    const predictedWinner = p.home_win_pct >= p.away_win_pct ? homeName : awayName;
+    savePrediction(state.home.id, state.away.id, homeName, awayName, predictedWinner, p.home_win_pct, p.away_win_pct);
+    // Refresh recent games to reflect the new prediction
+    if (n("nba-recent").style.display !== "none") loadRecentNBAGames();
+  }
+
+  // Moneyline (no draw)
+  n("mkt_1x2_title").textContent = "Moneyline — Vitória";
+  n("bars_1x2").innerHTML =
+    makeBar("Vitória "+homeName, p.home_win_pct, "c-orange") +
+    makeBar("Vitória "+awayName, p.away_win_pct, "c-sky");
+  n("mkt_ou").style.display = n("mkt_btts").style.display = "none";
+
+  // Over/Under table
+  const lines = p.over_under_lines || {};
+  const total = p.total_expected;
+  const rows  = Object.entries(lines).map(([line, vals]) => {
+    const closest = Math.abs(parseFloat(line) - total) < 5;
+    const cls = closest ? "class='ou-highlight'" : "";
+    const fav = vals.over_pct > vals.under_pct
+      ? `<span style="color:var(--orange)">Over ${vals.over_pct}%</span>`
+      : `<span style="color:var(--sky)">Under ${vals.under_pct}%</span>`;
+    return `<tr ${closest ? "style='background:rgba(255,107,53,.06)'" : ""}>
+      <td ${cls}>${line}</td>
+      <td ${cls}>${vals.over_pct}%</td>
+      <td ${cls}>${vals.under_pct}%</td>
+      <td>${fav}</td>
+    </tr>`;
+  }).join("");
+  n("nba_ou_rows").innerHTML = rows;
+  n("mkt_nba_ou").style.display = "block";
+
+  if (data.debug) { n("debug-pre").textContent=JSON.stringify(data.debug,null,2); n("debug-block").style.display="block"; }
+  else { n("debug-block").style.display="none"; }
+}
+
+// ── form submit ───────────────────────────────────────────────────────────────
+n("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn=n("btn"), errEl=n("error");
+  errEl.style.display="none";
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span> A calcular…';
+
+  try {
+    const payload  = buildPayload();
+    const endpoint = isNBA() ? "/predict/nba" : "/predict";
+    const res  = await fetch(endpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erro desconhecido");
+
+    n("results").style.display = "block";
+    isNBA() ? renderNBA(data) : renderFootball(data);
+    setTimeout(() => n("results").scrollIntoView({ behavior:"smooth", block:"start" }), 50);
+    animateBars();
+  } catch(err) {
+    errEl.textContent = "Erro: "+err.message;
+    errEl.style.display="block";
+  } finally {
+    btn.disabled=false;
+    btn.textContent = isNBA() ? "⚡ Calcular Probabilidades NBA" : "⚡ Calcular Probabilidades";
+  }
+});
+
+// ── prediction storage (localStorage) ────────────────────────────────────────
+const PRED_KEY = "nba_predictions";
+
+function savePrediction(homeId, awayId, homeName, awayName, predictedWinner, homeWinPct, awayWinPct) {
+  const preds = JSON.parse(localStorage.getItem(PRED_KEY) || "[]");
+  // replace any existing prediction for same matchup
+  const filtered = preds.filter(p => !(p.home_id === homeId && p.away_id === awayId));
+  filtered.unshift({
+    home_id: homeId, away_id: awayId,
+    home_name: homeName, away_name: awayName,
+    predicted_winner: predictedWinner,
+    home_win_pct: homeWinPct, away_win_pct: awayWinPct,
+    predicted_at: new Date().toISOString()
+  });
+  localStorage.setItem(PRED_KEY, JSON.stringify(filtered.slice(0, 30)));
+}
+
+function findPrediction(homeId, awayId) {
+  const preds = JSON.parse(localStorage.getItem(PRED_KEY) || "[]");
+  return preds.find(p =>
+    (p.home_id === homeId && p.away_id === awayId) ||
+    (p.home_id === awayId && p.away_id === homeId)
+  ) || null;
+}
+
+// ── recent NBA games ──────────────────────────────────────────────────────────
+async function loadRecentNBAGames() {
+  const body    = n("recent-games-body");
+  const updated = n("recent-updated");
+  body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px"><span class="spinner spinner-sm"></span> A carregar...</div>`;
+  try {
+    const games = await apiFetch("/api/nba/recent-games");
+    updated.textContent = "Atualizado: " + new Date().toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit"});
+    renderRecentGames(games);
+  } catch(e) {
+    body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderRecentGames(games) {
+  const body = n("recent-games-body");
+  if (!games || games.length === 0) {
+    body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px">Sem jogos recentes disponíveis.</div>`;
+    return;
+  }
+
+  let rows = "";
+  for (const g of games) {
+    const pred  = findPrediction(g.home_id, g.away_id);
+    const homeW = g.winner && g.winner === g.home_team;
+    const awayW = g.winner && g.winner === g.away_team;
+
+    // score cell
+    let scoreCell = "";
+    if (g.completed && g.home_score !== null && g.away_score !== null) {
+      scoreCell = `
+        <span style="font-weight:800;color:${homeW ? "var(--green)" : "var(--muted)"};">${g.home_score}</span>
+        <span style="color:var(--muted);margin:0 5px">–</span>
+        <span style="font-weight:800;color:${awayW ? "var(--green)" : "var(--muted)"};">${g.away_score}</span>
+        <span class="r-status">Final</span>`;
+    } else if (g.status && !["Scheduled","STATUS_SCHEDULED",""].includes(g.status)) {
+      scoreCell = `<span class="live-dot">● AO VIVO</span><span class="r-status">${g.status}</span>`;
+    } else {
+      scoreCell = `<span style="color:var(--muted);font-size:.75rem">Agendado</span>`;
+    }
+
+    // prediction cell
+    let predCell = `<span style="color:var(--muted);font-size:.7rem">—</span>`;
+    if (pred) {
+      const pw = pred.predicted_winner;
+      if (g.completed && g.winner) {
+        if (pw === g.winner) {
+          predCell = `<span class="pred-ok">✅ Acertou<span class="pred-sub">${pw}</span></span>`;
+        } else {
+          predCell = `<span class="pred-err">❌ Errou<span class="pred-sub">prev: ${pw}</span></span>`;
+        }
+      } else {
+        predCell = `<span class="pred-pen">🔮<span class="pred-sub">${pw}</span></span>`;
+      }
+    }
+
+    rows += `<tr>
+      <td class="r-date">${fmtDate(g.date)}</td>
+      <td class="r-team ${homeW ? "r-winner" : ""}">${g.home_team}</td>
+      <td class="r-score">${scoreCell}</td>
+      <td class="r-team ${awayW ? "r-winner" : ""}">${g.away_team}</td>
+      <td class="r-pred">${predCell}</td>
+    </tr>`;
+  }
+
+  body.innerHTML = `<table class="recent-table">
+    <thead><tr>
+      <th>Data</th><th>Casa</th><th style="text-align:center">Resultado</th><th>Visitante</th><th>Prognóstico</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function fmtDate(s) {
+  if (!s) return "—";
+  const d = new Date(s + "T12:00:00");
+  return d.toLocaleDateString("pt-PT", {day:"2-digit", month:"short"});
+}
+
+// ── init ──────────────────────────────────────────────────────────────────────
+loadLeagues();
+</script>
+</body>
+</html>
