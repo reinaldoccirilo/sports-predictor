@@ -51,10 +51,10 @@ LEAGUES = {
     "ger.1":                  "🇩🇪 Bundesliga",
     "ita.1":                  "🇮🇹 Serie A",
     "fra.1":                  "🇫🇷 Ligue 1",
-    "uefa.champions_league":  "🌍 Champions League",
+    "uefa.champions":         "🌍 Champions League",
     "uefa.europa":            "🌍 Europa League",
     "ned.1":                  "🇳🇱 Eredivisie",
-    "por.2":                  "🇵🇹 Liga Portugal 2",
+    "tur.1":                  "🇹🇷 Süper Lig",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
