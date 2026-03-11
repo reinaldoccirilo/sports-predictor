@@ -422,6 +422,46 @@
   .chip-W { background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.28); color: var(--green); }
   .chip-D { background: rgba(255,215,64,.1); border: 1px solid rgba(255,215,64,.28); color: var(--yellow); }
   .chip-L { background: rgba(255,82,82,.1);  border: 1px solid rgba(255,82,82,.28);  color: var(--red); }
+  .chip-score {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border-radius: 8px; font-size: .73rem; font-weight: 700;
+    line-height: 1;
+  }
+  .chip-score .cs-score { font-size: .78rem; color: rgba(255,255,255,.7); font-weight: 600; }
+  .chip-score .cs-ha { font-size: .62rem; opacity: .55; }
+  .team-stat-row {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    font-size: .75rem; color: var(--muted); margin-top: 6px;
+  }
+  .team-stat-row span b { font-weight: 700; }
+  .tsr-atk { color: var(--cyan) !important; }
+  .tsr-def { color: var(--orange) !important; }
+  .tsr-home { color: rgba(0,230,118,.8) !important; }
+  .tsr-away { color: rgba(255,215,64,.8) !important; }
+  .team-recent-wrap {
+    margin-top: 10px;
+    background: rgba(0,0,0,.18);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .team-recent-wrap table { width: 100%; border-collapse: collapse; font-size: .79rem; }
+  .team-recent-wrap th {
+    color: var(--muted); font-size: .6rem; text-transform: uppercase;
+    letter-spacing: 1.6px; padding: 7px 10px; text-align: left;
+    border-bottom: 1px solid rgba(0,210,255,.08);
+  }
+  .team-recent-wrap td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(0,210,255,.04);
+    vertical-align: middle;
+  }
+  .team-recent-wrap tr:last-child td { border-bottom: none; }
+  .team-recent-wrap tr:hover td { background: rgba(0,210,255,.03); }
+  .trw-date { color: var(--muted); font-size: .72rem; white-space: nowrap; }
+  .trw-opp  { font-weight: 600; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trw-ha   { font-size: .68rem; text-align: center; }
+  .trw-score { text-align: center; font-weight: 700; white-space: nowrap; }
+  .trw-res  { text-align: center; }
 
   /* ── OU table (NBA) ── */
   .ou-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 8px; }
@@ -593,6 +633,7 @@
           </button>
         </div>
         <div id="home_badge"></div>
+        <div id="home_recent_games"></div>
         <hr class="sep">
 
         <div class="card-title" style="margin-bottom:8px" id="lbl-form-home">Forma — últimos 5 jogos</div>
@@ -627,6 +668,7 @@
           </button>
         </div>
         <div id="away_badge"></div>
+        <div id="away_recent_games"></div>
         <hr class="sep">
 
         <div class="card-title" style="margin-bottom:8px" id="lbl-form-away">Forma — últimos 5 jogos</div>
@@ -848,6 +890,51 @@ function formChips(w, d, l) {
   </div>`;
 }
 
+function formChipsWithScores(games) {
+  if (!games || games.length === 0) return "";
+  const chips = games.map(g => {
+    const cls   = g.result === "W" ? "chip-W" : g.result === "D" ? "chip-D" : "chip-L";
+    const label = g.result === "W" ? "V" : g.result === "D" ? "E" : "D";
+    const ha    = g.home_away === "home" ? "🏠" : "✈️";
+    return `<span class="chip-score ${cls}">
+      <span>${label}</span>
+      <span class="cs-score">${g.gf}–${g.ga}</span>
+      <span class="cs-ha">${ha}</span>
+    </span>`;
+  }).join("");
+  return `<div class="form-chips" style="margin-top:8px">${chips}</div>`;
+}
+
+function renderTeamRecentGames(side, games) {
+  const el = n(`${side}_recent_games`);
+  if (!games || games.length === 0) { el.innerHTML = ""; return; }
+  const rows = games.map(g => {
+    const resCls = g.result === "W" ? "chip-W" : g.result === "D" ? "chip-D" : "chip-L";
+    const resLbl = g.result === "W" ? "V" : g.result === "D" ? "E" : "D";
+    const haLbl  = g.home_away === "home"
+      ? `<span style="color:var(--cyan);font-weight:700">Casa</span>`
+      : `<span style="color:var(--muted)">Fora</span>`;
+    return `<tr>
+      <td class="trw-date">${g.date}</td>
+      <td class="trw-opp">${g.opponent || "—"}</td>
+      <td class="trw-ha">${haLbl}</td>
+      <td class="trw-score">${g.gf}–${g.ga}</td>
+      <td class="trw-res"><span class="chip ${resCls}" style="margin:0 auto">${resLbl}</span></td>
+    </tr>`;
+  }).join("");
+  el.innerHTML = `<div class="team-recent-wrap">
+    <table>
+      <thead><tr>
+        <th>Data</th><th>Adversário</th>
+        <th style="text-align:center">Local</th>
+        <th style="text-align:center">Resultado</th>
+        <th style="text-align:center">R</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
 // ── sport toggle ──────────────────────────────────────────────────────────────
 function setSport(s) {
   sport = s;
@@ -911,6 +998,7 @@ function setSport(s) {
   // reset teams and reload league
   state.home = null; state.away = null;
   clearBadge("home_badge"); clearBadge("away_badge"); clearBadge("h2h_badge");
+  n("home_recent_games").innerHTML = ""; n("away_recent_games").innerHTML = "";
   n("results").style.display = "none";
 
   if (isNba) {
@@ -1002,13 +1090,31 @@ async function fetchTeamData(side) {
 
     state[side] = { id: teamId, name: d.name };
 
-    const sport_label = isNBA()
-      ? `${d.name} · ${d._games_played} jogos · ${d._total_wins}V ${d._total_losses}D`
-      : `${d.name} · ${d._games_played} jogos · ${d._goals_for} golos marcados · ${d._goals_against} sofridos`;
+    if (isNBA()) {
+      const label = `${d.name} · ${d._games_played} jogos · ${d._total_wins}V ${d._total_losses}D`;
+      setBadge(`${side}_badge`, label);
+      n(`${side}_badge`).insertAdjacentHTML("beforeend", formChips(d.form.wins, d.form.draws, d.form.losses));
+    } else {
+      const hwr = (d.home_win_rate * 100).toFixed(0);
+      const awr = (d.away_win_rate * 100).toFixed(0);
+      const gd  = d._goals_for - d._goals_against;
+      const gdStr = gd >= 0 ? `+${gd}` : `${gd}`;
+      setBadge(`${side}_badge`, d.name);
+      n(`${side}_badge`).insertAdjacentHTML("beforeend", `
+        <div class="team-stat-row">
+          <span>⚽ <b>${d._games_played}</b> jogos</span>
+          <span class="tsr-atk">🗡 Ataque: <b>${d.avg_scored}</b> gls/j</span>
+          <span class="tsr-def">🛡 Defesa: <b>${d.avg_conceded}</b> sof/j</span>
+          <span>DG: <b>${gdStr}</b></span>
+        </div>
+        <div class="team-stat-row" style="margin-top:4px">
+          <span class="tsr-home">🏠 Casa: <b>${hwr}%</b>V</span>
+          <span class="tsr-away">✈️ Fora: <b>${awr}%</b>V</span>
+        </div>`);
+      n(`${side}_badge`).insertAdjacentHTML("beforeend", formChipsWithScores(d.form.recent_games || []));
+    }
 
-    setBadge(`${side}_badge`, sport_label);
-    n(`${side}_badge`).insertAdjacentHTML("beforeend", formChips(d.form.wins, d.form.draws, d.form.losses));
-
+    renderTeamRecentGames(side, d.form.recent_games || []);
     if (state.home && state.away) n("btn_fetch_h2h").disabled = false;
   } catch(e) {
     setBadge(`${side}_badge`, `Erro: ${e.message}`, "error");

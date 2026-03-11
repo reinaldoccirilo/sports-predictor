@@ -106,17 +106,11 @@ def calculate_form_from_events(events: list, team_id_str: str) -> dict:
     Percorre os eventos do calendário de uma equipa e calcula
     o registo dos últimos 5 jogos concluídos.
 
-    Estrutura real da ESPN API:
-      event.competitions[0].status.completed  → bool
-      event.competitions[0].competitors[]     → [{id, score.value}]
-      event.date                              → timestamp ISO
-
-    Devolve: {"wins", "draws", "losses", "gf", "ga"}
+    Devolve: {"wins", "draws", "losses", "gf", "ga", "recent_games"}
+    Cada entrada em recent_games: {date, opponent, gf, ga, result, home_away}
     """
     completed = []
     for evt in events:
-        # status e competitors vivem dentro de competitions[0]
-        # path real: competitions[0].status.type.completed
         competition = evt.get("competitions", [{}])[0]
         if not competition.get("status", {}).get("type", {}).get("completed"):
             continue
@@ -129,11 +123,18 @@ def calculate_form_from_events(events: list, team_id_str: str) -> dict:
         if not our or not opp:
             continue
 
-        gf = float(our.get("score", {}).get("value", 0))
-        ga = float(opp.get("score", {}).get("value", 0))
-        completed.append({"gf": gf, "ga": ga, "date": evt.get("date", "")})
+        sc_our = our.get("score", {})
+        sc_opp = opp.get("score", {})
+        gf = float(sc_our.get("value", 0) if isinstance(sc_our, dict) else (sc_our or 0))
+        ga = float(sc_opp.get("value", 0) if isinstance(sc_opp, dict) else (sc_opp or 0))
+        completed.append({
+            "gf":       gf,
+            "ga":       ga,
+            "date":     evt.get("date", ""),
+            "opponent": opp.get("team", {}).get("displayName", ""),
+            "home_away": our.get("homeAway", ""),
+        })
 
-    # Ordenar por data (mais recente primeiro) e pegar os 5 últimos
     completed.sort(key=lambda x: x["date"], reverse=True)
     last5 = completed[:5]
 
@@ -143,7 +144,22 @@ def calculate_form_from_events(events: list, team_id_str: str) -> dict:
     gf     = int(sum(m["gf"] for m in last5))
     ga     = int(sum(m["ga"] for m in last5))
 
-    return {"wins": wins, "draws": draws, "losses": losses, "gf": gf, "ga": ga}
+    recent_games = [
+        {
+            "date":      m["date"][:10],
+            "opponent":  m["opponent"],
+            "gf":        int(m["gf"]),
+            "ga":        int(m["ga"]),
+            "result":    "W" if m["gf"] > m["ga"] else ("D" if m["gf"] == m["ga"] else "L"),
+            "home_away": m["home_away"],
+        }
+        for m in last5
+    ]
+
+    return {
+        "wins": wins, "draws": draws, "losses": losses, "gf": gf, "ga": ga,
+        "recent_games": recent_games,
+    }
 
 
 def fetch_team_stats(team_id: str, league_id: str) -> dict:
